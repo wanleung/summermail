@@ -193,4 +193,4 @@ Tests use mocked IMAP and LLM clients — no live credentials needed.
 
 ## License
 
-MIT
+GNU General Public License v3.0 or later — see [LICENSE](LICENSE) for details.
