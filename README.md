@@ -50,12 +50,69 @@ total_score = (vip ? 50 : 0) + keyword_score×0.3 + llm_score×0.7
 - **Keyword score** (0–100, weighted ×0.3) — configurable keywords with 1–10 weights
 - **LLM score** (0–100, weighted ×0.7) — LLM judges urgency from subject + body snippet
 
+## Ollama Setup
+
+SummerMail uses [Ollama](https://ollama.com) as the default LLM backend for scoring and summarisation. Ollama can run on the same machine as Docker or on a separate host on your network.
+
+### Install Ollama
+
+```bash
+# macOS / Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Or download from https://ollama.com/download
+```
+
+### Pull the model
+
+```bash
+ollama pull llama3.2
+```
+
+### Allow network access (if Ollama is on a separate host)
+
+By default Ollama only listens on `localhost`. To expose it to other machines on your network, set the environment variable before starting Ollama:
+
+```bash
+# Linux (systemd) — add to /etc/systemd/system/ollama.service under [Service]
+Environment="OLLAMA_HOST=0.0.0.0"
+
+# Then reload and restart
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+
+# macOS / manual start
+OLLAMA_HOST=0.0.0.0 ollama serve
+```
+
+### Point SummerMail at your Ollama host
+
+In your `.env`, set `OLLAMA_BASE_URL` to your Ollama machine's IP:
+
+```env
+# Ollama on a separate host (e.g. 10.100.1.30)
+OLLAMA_BASE_URL=http://10.100.1.30:11434
+
+# Ollama on the same machine as Docker (default)
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+```
+
+### Verify connectivity
+
+```bash
+curl http://<ollama-host>:11434/api/tags
+```
+
+You should see a JSON list of your installed models. If `llama3.2` appears, you're ready to go.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
 
 - Docker + Docker Compose
-- [Ollama](https://ollama.com) running locally with `llama3.2` pulled
+- Ollama running with `llama3.2` pulled (see [Ollama Setup](#ollama-setup) above)
 - Gmail [App Password](https://support.google.com/accounts/answer/185833) (not your main password)
 
 ### 1. Configure
