@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject }}{% endblock %}
+{% block content %}
+<div style="max-width:800px;margin-top:1rem">
+  <a href="/" style="color:#64748b;font-size:.8rem;text-decoration:none">← Back</a>
+
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+      <div>
+        <h2 style="font-size:1rem;color:#e2e8f0;margin-bottom:.3rem">{{ email.subject }}</h2>
+        <div style="color:#64748b;font-size:.78rem">
+          From: <strong style="color:#94a3b8">{{ email.sender_name or email.sender_email }}</strong>
+          &lt;{{ email.sender_email }}&gt;
+          · {{ email.received_at[:16] }}
+        </div>
+      </div>
+      <div style="text-align:right;min-width:90px">
+        {% if email.total_score >= 70 %}
+          <span class="badge badge-red">{{ email.total_score }}</span>
+        {% elif email.total_score >= 40 %}
+          <span class="badge badge-orange">{{ email.total_score }}</span>
+        {% else %}
+          <span class="badge badge-gray">{{ email.total_score }}</span>
+        {% endif %}
+        {% if email.vip_match %}<br><span class="badge badge-vip" style="margin-top:.3rem">👤 VIP</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <div style="color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Score Breakdown</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:.8rem">
+      <div style="background:#0f172a;border-radius:6px;padding:.6rem;text-align:center">
+        <div style="color:#60a5fa;font-size:1.2rem;font-weight:700">{{ email.vip_match | int * 50 }}</div>
+        <div style="color:#64748b;font-size:.7rem">VIP (+50)</div>
+      </div>
+      <div style="background:#0f172a;border-radius:6px;padding:.6rem;text-align:center">
+        <div style="color:#60a5fa;font-size:1.2rem;font-weight:700">{{ "%.0f" | format(email.keyword_score * 0.3) }}</div>
+        <div style="color:#64748b;font-size:.7rem">Keywords (×0.3)</div>
+      </div>
+      <div style="background:#0f172a;border-radius:6px;padding:.6rem;text-align:center">
+        <div style="color:#60a5fa;font-size:1.2rem;font-weight:700">{{ "%.0f" | format(email.llm_score * 0.7) }}</div>
+        <div style="color:#64748b;font-size:.7rem">LLM (×0.7)</div>
+      </div>
+    </div>
+    {% if email.llm_reasoning %}
+    <div style="margin-top:.75rem;font-size:.78rem;color:#94a3b8;border-top:1px solid #334155;padding-top:.6rem">
+      <strong style="color:#64748b">LLM reasoning:</strong> {{ email.llm_reasoning }}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if email.body_text %}
+  <div class="card" style="margin-top:1rem">
+    <div style="color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;margin-bottom:.5rem">Body</div>
+    <pre style="white-space:pre-wrap;font-size:.8rem;color:#cbd5e1;font-family:inherit;line-height:1.6">{{ email.body_text }}</pre>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

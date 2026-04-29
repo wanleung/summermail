@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin-top:1rem">
+  <h2 style="font-size:.95rem;color:#e2e8f0;margin-bottom:1rem">⚙️ Settings</h2>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <div style="color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;margin-bottom:.75rem">👤 VIP Senders</div>
+    <form action="/config/vip" method="post" style="display:flex;gap:.5rem;margin-bottom:.75rem"
+          hx-post="/config/vip" hx-target="#vip-list" hx-swap="innerHTML">
+      <input type="text" name="pattern" placeholder="email or *@domain.com" style="flex:1">
+      <input type="text" name="label" placeholder="Label (optional)" style="width:140px">
+      <button class="btn" type="submit">+ Add</button>
+    </form>
+    <div id="vip-list">
+      {% for v in vip_senders %}
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.8rem;padding:.3rem 0;border-bottom:1px solid #1e293b">
+        <span>{{ v.label or "" }} <span style="color:#64748b">{{ v.pattern }}</span></span>
+        <a href="/config/vip/{{ v.id }}/delete" style="color:#ef4444;font-size:.75rem"
+           hx-delete="/config/vip/{{ v.id }}" hx-target="closest div" hx-swap="outerHTML">✕ Remove</a>
+      </div>
+      {% else %}
+      <p style="color:#64748b;font-size:.8rem">No VIP senders yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;margin-bottom:.75rem">🏷️ Keywords</div>
+    <form action="/config/keywords" method="post" style="display:flex;gap:.5rem;margin-bottom:.75rem"
+          hx-post="/config/keywords" hx-target="#kw-list" hx-swap="innerHTML">
+      <input type="text" name="keyword" placeholder="keyword" style="flex:1">
+      <input type="number" name="weight" placeholder="Weight (1-10)" value="5" style="width:80px">
+      <input type="hidden" name="match_body" value="true">
+      <button class="btn" type="submit">+ Add</button>
+    </form>
+    <div id="kw-list">
+      {% for k in keywords %}
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.8rem;padding:.3rem 0;border-bottom:1px solid #1e293b">
+        <span>{{ k.keyword }} <span style="color:#64748b">weight={{ k.weight }}</span></span>
+        <a href="/config/keywords/{{ k.id }}/delete" style="color:#ef4444;font-size:.75rem"
+           hx-delete="/config/keywords/{{ k.id }}" hx-target="closest div" hx-swap="outerHTML">✕ Remove</a>
+      </div>
+      {% else %}
+      <p style="color:#64748b;font-size:.8rem">No keywords yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
