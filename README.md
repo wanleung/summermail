@@ -40,15 +40,91 @@ Gmail IMAP
 | `api` | 8080 | Web dashboard, REST API, cron scheduler |
 | `llm-proxy` | 4000 | LiteLLM proxy (Ollama / OpenAI / Anthropic) |
 
-## Scoring Formula
+## Scoring System
+
+Every fetched email is scored 0–100 for importance using three independent layers. The layers are combined into a single `total_score` that drives digest ordering and urgency badges.
+
+### Formula
 
 ```
-total_score = (vip ? 50 : 0) + keyword_score×0.3 + llm_score×0.7
+total_score = min(100, (50 if VIP) + keyword_score × 0.3 + llm_score × 0.7)
 ```
 
-- **VIP match** (+50) — exact email or wildcard domain (e.g. `*@github.com`)
-- **Keyword score** (0–100, weighted ×0.3) — configurable keywords with 1–10 weights
-- **LLM score** (0–100, weighted ×0.7) — LLM judges urgency from subject + body snippet
+### Layer 1 — VIP Sender Match (+50 flat bonus)
+
+If the sender's email address matches any entry in your VIP list, the email receives a flat **+50 point bonus** before the other layers are calculated. This guarantees VIP emails always appear near the top of the digest.
+
+VIP patterns support two formats:
+
+| Pattern | Matches |
+|---------|---------|
+| `boss@company.com` | Exact address only |
+| `@company.com` | Any sender at that domain |
+
+Manage your VIP list via the dashboard (**Settings → VIP Senders**) or the REST API (`POST /config/vip`).
+
+### Layer 2 — Keyword Scoring (0–100, weighted ×0.3)
+
+Each keyword in your list has a **weight from 1–10**. When a keyword appears in the subject or body, its weight is added to a running total:
+
+```
+keyword_score = min(100, total_matched_weight × 10)
+```
+
+- Subject matches are checked first; body matches only count if `match_body` is enabled for that keyword and the subject didn't already match (no double-counting).
+- The raw weight total is multiplied by 10 so a single weight-10 keyword already reaches 100.
+- This layer contributes up to **30 points** to the final score (`100 × 0.3 = 30`).
+
+Manage keywords via the dashboard (**Settings → Keywords**) or the REST API (`POST /config/keywords`).
+
+**Example keywords to get started:**
+
+| Keyword | Weight | match_body |
+|---------|--------|------------|
+| `urgent` | 8 | ✓ |
+| `invoice` | 7 | ✓ |
+| `action required` | 9 | ✓ |
+| `newsletter` | 1 | ✗ |
+
+### Layer 3 — LLM Importance Score (0–100, weighted ×0.7)
+
+The LLM receives the email subject and first 500 characters of the body, then returns a JSON score and one-sentence reason:
+
+```json
+{"score": 85, "reason": "Requires approval before end of day."}
+```
+
+The prompt instructs the LLM to use this scale:
+
+| Score | Meaning |
+|-------|---------|
+| 0–20 | Spam / newsletter / no action needed |
+| 21–49 | FYI / informational |
+| 50–69 | May need follow-up |
+| 70–100 | Immediate action or response required |
+
+The LLM score contributes up to **70 points** to the final score (`100 × 0.7 = 70`), making it the dominant signal. If the LLM call fails, this layer falls back to 0 and a fallback reason is stored.
+
+The LLM reasoning is stored per-email and visible in the **Email Detail** view on the dashboard.
+
+### Score Bands
+
+The final `total_score` maps to urgency bands used in the digest and dashboard:
+
+| Score | Band | Digest section |
+|-------|------|----------------|
+| 70–100 | 🔴 Urgent | Action Required |
+| 30–69 | 🟠 Normal | Worth Reading |
+| 0–29 | ⚪ Low | Low Priority |
+
+### Worked Examples
+
+| Scenario | VIP | Keyword | LLM | Total |
+|----------|-----|---------|-----|-------|
+| Boss emails "urgent approval needed" | +50 | 80 | 90 | min(100, 50+24+63) = **100** |
+| GitHub PR notification | 0 | 30 | 45 | min(100, 0+9+31.5) = **40** |
+| Marketing newsletter | 0 | 10 | 5 | min(100, 0+3+3.5) = **6** |
+| Unknown sender, high-urgency body | 0 | 0 | 88 | min(100, 0+0+61.6) = **61** |
 
 ## Ollama Setup
 
