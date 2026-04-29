@@ -33,6 +33,8 @@ def compute_total_score(vip: bool, keyword: int, llm: int) -> int:
         raw = (50 if vip else 0) + keyword * 0.3 + llm * 0.7
         result = min(100, int(raw))
     """
+    keyword = max(0, min(100, keyword))
+    llm = max(0, min(100, llm))
     raw = (50 if vip else 0) + keyword * 0.3 + llm * 0.7
     return min(100, int(raw))
 
@@ -109,6 +111,7 @@ def run():
         return {"status": "success", "emails_scored": scored}
 
     except Exception as exc:
+        conn.rollback()
         raise HTTPException(status_code=500, detail=str(exc))
     finally:
         conn.close()

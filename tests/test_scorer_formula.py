@@ -31,3 +31,13 @@ def test_keyword_and_llm_without_vip():
 def test_score_never_exceeds_100():
     """Test that combined score never exceeds 100."""
     assert compute_total_score(vip=True, keyword=100, llm=100) == 100
+
+
+def test_negative_inputs_floored_to_zero():
+    """Test that negative inputs are clamped to zero."""
+    assert compute_total_score(vip=False, keyword=-50, llm=-50) == 0
+
+
+def test_over_range_inputs_capped():
+    """Test that inputs over 100 are capped at 100."""
+    assert compute_total_score(vip=False, keyword=200, llm=300) == 100

@@ -35,3 +35,14 @@ def test_score_llm_calls_openai_client():
         score, reason = score_llm("Urgent invoice due", "Please pay by Friday")
     assert score == 80
     assert reason == "Action required"
+
+
+def test_score_llm_propagates_connection_error():
+    """Test that connection errors are propagated."""
+    with patch("scorer.llm_scorer.client.chat.completions.create",
+               side_effect=Exception("Connection refused")):
+        try:
+            score_llm("Subject", "Body")
+            assert False, "Expected exception to be raised"
+        except Exception as e:
+            assert "Connection refused" in str(e)
