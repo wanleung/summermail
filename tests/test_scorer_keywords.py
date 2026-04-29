@@ -47,3 +47,14 @@ def test_score_capped_at_100(tmp_db):
     tmp_db.commit()
     subject = " ".join(f"keyword{i}" for i in range(20))
     assert score_keywords(subject, "", tmp_db) == 100
+
+
+def test_subject_match_not_double_counted_when_also_in_body(tmp_db):
+    """Keyword in both subject and body must only be scored once."""
+    tmp_db.execute(
+        "INSERT INTO keywords (keyword, weight, match_body) VALUES (?, ?, ?)",
+        ("urgent", 8, True),
+    )
+    tmp_db.commit()
+    # 'urgent' appears in both places; expected score: 8 * 10 = 80, not 160
+    assert score_keywords("urgent matter", "this is urgent", tmp_db) == 80

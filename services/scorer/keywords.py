@@ -27,10 +27,12 @@ def score_keywords(subject: str, body: str, conn: sqlite3.Connection) -> int:
         kw = row["keyword"].lower()
         match_body = bool(row["match_body"])
         weight = row["weight"]
+        if weight is None:
+            continue
         if kw in subject_lower:
             total_weight += weight
         elif match_body and kw in body_lower:  # subject takes priority; no double-counting
             total_weight += weight
 
     # weights are 1–10; multiply by 10 to scale to 0–100
-    return min(100, total_weight * 10)
+    return min(100, max(0, total_weight * 10))

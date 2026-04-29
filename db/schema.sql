@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS vip_senders (
 CREATE TABLE IF NOT EXISTS keywords (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     keyword    TEXT    NOT NULL UNIQUE,
-    weight     INTEGER DEFAULT 5,
+    weight     INTEGER NOT NULL DEFAULT 5 CHECK(weight BETWEEN 1 AND 10),
     match_body BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now'))
 );
