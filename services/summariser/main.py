@@ -113,21 +113,26 @@ def run():
             ],
             temperature=0.3,
         )
+        
+        # Guard against empty LLM response
+        if not response.choices:
+            raise ValueError("LLM returned empty response")
         summary_text = response.choices[0].message.content
+        if not summary_text:
+            raise ValueError("LLM returned empty summary content")
 
-        # Store summary in database
+        # Store summary in database (no commit yet)
         top_ids = [r["id"] for r in rows[:10]]
         conn.execute(
             "INSERT INTO summaries (date, summary_text, email_count, top_email_ids) "
             "VALUES (?,?,?,?)",
             (today, summary_text, email_count, json.dumps(top_ids)),
         )
-        conn.commit()
 
-        # Send email
+        # Send email — if this raises, rollback will undo the INSERT
         send_summary_email(summary_text, settings.summary_send_to)
 
-        # Mark as sent
+        # Mark as sent and commit everything atomically
         conn.execute(
             "UPDATE summaries SET sent_at=datetime('now'), sent_to=? WHERE date=?",
             (settings.summary_send_to, today),

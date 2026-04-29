@@ -54,3 +54,18 @@ def test_build_prompt_truncates_body():
 def test_system_prompt_requests_json_structure():
     assert "Action Required" in SYSTEM_PROMPT
     assert "Worth Reading" in SYSTEM_PROMPT
+
+
+def test_build_prompt_empty_list():
+    prompt = build_prompt([])
+    assert "today's emails" in prompt
+
+
+def test_build_prompt_none_body():
+    rows = [{
+        "subject": "X", "sender_email": "x@y.com",
+        "sender_name": "X", "received_at": "2026-04-29T08:00:00",
+        "total_score": 50, "body_text": None,
+    }]
+    prompt = build_prompt(rows)
+    assert "Body:" in prompt

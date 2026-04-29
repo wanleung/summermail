@@ -27,3 +27,15 @@ def test_send_summary_email_subject_contains_date():
     msg = captured.get("msg", "")
     # Subject may be RFC 2047 encoded, so check for key components
     assert "Daily" in msg and "Subject:" in msg
+
+
+def test_send_summary_email_smtp_sequence():
+    with patch("summariser.mailer.smtplib.SMTP") as mock_smtp:
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__ = MagicMock(return_value=mock_server)
+        mock_smtp.return_value.__exit__ = MagicMock(return_value=False)
+        send_summary_email("Test content", "you@gmail.com")
+    mock_server.ehlo.assert_called_once()
+    mock_server.starttls.assert_called_once()
+    mock_server.login.assert_called_once()
+    mock_server.sendmail.assert_called_once()
