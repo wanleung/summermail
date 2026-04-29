@@ -45,7 +45,7 @@ def _extract_body(msg: email.message.Message) -> str:
     return payload.decode(charset, errors="replace") if payload else ""
 
 
-def _parse_email_message(msg: email.message.Message) -> Email:
+def _parse_email_message(msg: email.message.Message, is_read: bool = False) -> Email:
     """Parse email message into Email dataclass."""
     raw_from = msg.get("From", "")
     sender_name, sender_email = parseaddr(raw_from)
@@ -75,7 +75,7 @@ def _parse_email_message(msg: email.message.Message) -> Email:
         received_at=received_at,
         body_text=_extract_body(msg),
         labels=labels,
-        is_read=False,
+        is_read=is_read,
     )
 
 
@@ -116,10 +116,14 @@ class IMAPClient:
             ids = data[0].split()
             inserted = 0
             for uid in ids:
-                _, msg_data = mail.fetch(uid, "(RFC822)")
+                # BODY.PEEK[] fetches full message without marking it as read
+                # FLAGS fetches current read/seen status
+                _, msg_data = mail.fetch(uid, "(FLAGS BODY.PEEK[])")
+                flags_raw = msg_data[0][0]  # e.g. b'1 (FLAGS (\\Seen) BODY.PEEK[] ...'
+                is_read = b"\\Seen" in flags_raw
                 raw = msg_data[0][1]
                 msg = email.message_from_bytes(raw)
-                em = _parse_email_message(msg)
+                em = _parse_email_message(msg, is_read=is_read)
                 if _insert_email(em, conn):
                     inserted += 1
 
