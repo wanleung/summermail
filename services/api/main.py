@@ -13,7 +13,7 @@ from api.routers.config_router import router as config_router
 from api.routers.run_router import router as run_router, trigger_run
 
 
-async def scheduled_run():
+def scheduled_run():
     """Run the pipeline on schedule."""
     from shared.config import settings
 
@@ -34,6 +34,10 @@ async def lifespan(app: FastAPI):
 
     scheduler = AsyncIOScheduler()
     cron_parts = settings.schedule_cron.split()
+    if len(cron_parts) != 5:
+        raise ValueError(
+            f"Invalid schedule_cron '{settings.schedule_cron}': expected 5 parts, got {len(cron_parts)}"
+        )
     scheduler.add_job(
         scheduled_run,
         CronTrigger(

@@ -113,7 +113,8 @@ def test_search_returns_results(client):
     response = client.get("/search?q=invoice")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 0  # FTS might not return results immediately
+    assert len(data) > 0
+    assert data[0]["subject"] == "Invoice for services"
 
 
 def test_summaries_history(client):
@@ -122,3 +123,25 @@ def test_summaries_history(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
+
+
+def test_config_delete_vip(client):
+    """Test deleting a VIP sender."""
+    r = client.post("/config/vip", json={"pattern": "del@b.com", "label": "Del"})
+    vip_id = r.json()["id"]
+    r = client.delete(f"/config/vip/{vip_id}")
+    assert r.status_code == 200
+    assert r.json()["deleted"] == vip_id
+
+
+def test_config_duplicate_vip_returns_400(client):
+    """Test that duplicate VIP patterns return 400."""
+    client.post("/config/vip", json={"pattern": "dup@b.com", "label": "Dup"})
+    r = client.post("/config/vip", json={"pattern": "dup@b.com", "label": "Dup2"})
+    assert r.status_code == 400
+
+
+def test_delete_nonexistent_vip_returns_404(client):
+    """Test that deleting non-existent VIP returns 404."""
+    r = client.delete("/config/vip/99999")
+    assert r.status_code == 404

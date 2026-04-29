@@ -1,4 +1,5 @@
 """Email listing and search endpoints."""
+import sqlite3
 from fastapi import APIRouter, HTTPException, Query
 
 from shared.database import get_db_ctx
@@ -25,16 +26,19 @@ def list_emails(limit: int = 50, min_score: int = 0):
 def search_emails(q: str = Query(..., min_length=1)):
     """Search emails using full-text search."""
     with get_db_ctx() as conn:
-        rows = conn.execute(
-            "SELECT e.id, e.subject, e.sender_email, e.received_at, "
-            "COALESCE(s.total_score,0) as total_score "
-            "FROM emails_fts fts "
-            "JOIN emails e ON fts.rowid=e.rowid "
-            "LEFT JOIN email_scores s ON e.id=s.email_id "
-            "WHERE emails_fts MATCH ? "
-            "ORDER BY rank LIMIT 30",
-            (q,),
-        ).fetchall()
+        try:
+            rows = conn.execute(
+                "SELECT e.id, e.subject, e.sender_email, e.received_at, "
+                "COALESCE(s.total_score,0) as total_score "
+                "FROM emails_fts fts "
+                "JOIN emails e ON fts.rowid=e.rowid "
+                "LEFT JOIN email_scores s ON e.id=s.email_id "
+                "WHERE emails_fts MATCH ? "
+                "ORDER BY rank LIMIT 30",
+                (q,),
+            ).fetchall()
+        except sqlite3.OperationalError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid search query: {e}")
         return [dict(r) for r in rows]
 
 
