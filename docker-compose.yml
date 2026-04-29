@@ -1,0 +1,66 @@
+version: "3.9"
+
+volumes:
+  db_data:
+
+x-common: &common
+  restart: unless-stopped
+  volumes:
+    - db_data:/data
+  env_file: .env
+
+services:
+  llm-proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    <<: *common
+    volumes:
+      - db_data:/data
+      - ./litellm/config.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "4000:4000"
+    environment:
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL}"
+
+  fetcher:
+    build:
+      context: .
+      dockerfile: services/fetcher/Dockerfile
+    <<: *common
+    ports:
+      - "8001:8001"
+    depends_on:
+      - llm-proxy
+
+  scorer:
+    build:
+      context: .
+      dockerfile: services/scorer/Dockerfile
+    <<: *common
+    ports:
+      - "8002:8002"
+    depends_on:
+      - llm-proxy
+
+  summariser:
+    build:
+      context: .
+      dockerfile: services/summariser/Dockerfile
+    <<: *common
+    ports:
+      - "8003:8003"
+    depends_on:
+      - llm-proxy
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    <<: *common
+    ports:
+      - "8080:8080"
+    depends_on:
+      - fetcher
+      - scorer
+      - summariser
+      - llm-proxy
