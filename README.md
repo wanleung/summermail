@@ -1,4 +1,4 @@
-# MailBrief — Gmail Email Summariser
+# SummerMail — Gmail Email Summariser
 
 A self-hosted daily email digest for Gmail. Fetches your inbox via IMAP, scores each email by importance, generates an AI summary, and delivers it to your inbox every morning. Includes a live web dashboard.
 

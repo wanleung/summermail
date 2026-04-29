@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MailBrief — {% block title %}Dashboard{% endblock %}</title>
+  <title>SummerMail — {% block title %}Dashboard{% endblock %}</title>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,7 +28,7 @@
 </head>
 <body>
   <nav>
-    <span class="brand">📧 MailBrief</span>
+    <span class="brand">📧 SummerMail</span>
     <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Today</a>
     <a href="/emails">All Emails</a>
     <a href="/config">Settings</a>
