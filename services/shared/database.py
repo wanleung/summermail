@@ -27,6 +27,11 @@ def get_db_ctx(db_path: str = None) -> Generator[sqlite3.Connection, None, None]
 
 def init_db(conn: sqlite3.Connection, schema_path: str = None) -> None:
     if schema_path is None:
-        schema_path = Path(__file__).parent.parent.parent / "db" / "schema.sql"
+        # Try two levels up first (works in Docker: /app/shared -> /app/db)
+        _this_dir = Path(__file__).parent
+        schema_path = _this_dir.parent / "db" / "schema.sql"
+        # Fallback: three levels up for local dev (services/shared -> services -> project_root/db)
+        if not schema_path.exists():
+            schema_path = _this_dir.parent.parent / "db" / "schema.sql"
     with open(schema_path) as f:
         conn.executescript(f.read())
