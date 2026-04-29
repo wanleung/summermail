@@ -21,6 +21,20 @@ CREATE TRIGGER IF NOT EXISTS emails_ai AFTER INSERT ON emails BEGIN
     VALUES (new.rowid, new.subject, new.body_text, new.sender_email);
 END;
 
+-- Keep FTS in sync on UPDATE
+CREATE TRIGGER IF NOT EXISTS emails_au AFTER UPDATE ON emails BEGIN
+    INSERT INTO emails_fts(emails_fts, rowid, subject, body_text, sender_email)
+    VALUES ('delete', old.rowid, old.subject, old.body_text, old.sender_email);
+    INSERT INTO emails_fts(rowid, subject, body_text, sender_email)
+    VALUES (new.rowid, new.subject, new.body_text, new.sender_email);
+END;
+
+-- Keep FTS in sync on DELETE
+CREATE TRIGGER IF NOT EXISTS emails_ad AFTER DELETE ON emails BEGIN
+    INSERT INTO emails_fts(emails_fts, rowid, subject, body_text, sender_email)
+    VALUES ('delete', old.rowid, old.subject, old.body_text, old.sender_email);
+END;
+
 CREATE TABLE IF NOT EXISTS email_scores (
     email_id      TEXT PRIMARY KEY REFERENCES emails(id),
     vip_match     BOOLEAN DEFAULT 0,
@@ -43,14 +57,14 @@ CREATE TABLE IF NOT EXISTS summaries (
 
 CREATE TABLE IF NOT EXISTS vip_senders (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    pattern    TEXT    NOT NULL,
+    pattern    TEXT    NOT NULL UNIQUE,
     label      TEXT,
     created_at DATETIME DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS keywords (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword    TEXT    NOT NULL,
+    keyword    TEXT    NOT NULL UNIQUE,
     weight     INTEGER DEFAULT 5,
     match_body BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now'))
