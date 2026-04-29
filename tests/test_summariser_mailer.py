@@ -1,5 +1,6 @@
 """Tests for the summariser mailer."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call, ANY
+import pytest
 from summariser.mailer import send_summary_email
 
 
@@ -39,3 +40,24 @@ def test_send_summary_email_smtp_sequence():
     mock_server.starttls.assert_called_once()
     mock_server.login.assert_called_once()
     mock_server.sendmail.assert_called_once()
+    mock_server.assert_has_calls([
+        call.ehlo(),
+        call.starttls(),
+        call.login(ANY, ANY),
+        call.sendmail(ANY, ANY, ANY),
+    ], any_order=False)
+
+
+def test_send_summary_email_raises_on_empty_summary():
+    with pytest.raises(ValueError, match="summary_text cannot be empty"):
+        send_summary_email("", "you@gmail.com")
+
+
+def test_send_summary_email_raises_on_whitespace_summary():
+    with pytest.raises(ValueError, match="summary_text cannot be empty"):
+        send_summary_email("   ", "you@gmail.com")
+
+
+def test_send_summary_email_raises_on_invalid_email():
+    with pytest.raises(ValueError, match="Invalid recipient email"):
+        send_summary_email("Test content", "not-an-email")
