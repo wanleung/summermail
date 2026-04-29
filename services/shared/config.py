@@ -1,10 +1,11 @@
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    gmail_user: str = ""
-    gmail_app_password: str = ""
-    summary_send_to: str = ""
+    gmail_user: str
+    gmail_app_password: SecretStr
+    summary_send_to: str
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     fetch_scope: str = "24h"

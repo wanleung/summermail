@@ -30,25 +30,25 @@ class EmailScore:
 
 @dataclass
 class Summary:
-    id: Optional[int]
     date: str
     summary_text: str
     email_count: int
     top_email_ids: list = field(default_factory=list)
     sent_at: Optional[datetime] = None
     sent_to: str = ""
+    id: Optional[int] = None
 
 
 @dataclass
 class VipSender:
-    id: Optional[int]
     pattern: str
     label: str = ""
+    id: Optional[int] = None
 
 
 @dataclass
 class Keyword:
-    id: Optional[int]
     keyword: str
     weight: int = 5
     match_body: bool = True
+    id: Optional[int] = None
