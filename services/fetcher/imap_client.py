@@ -57,7 +57,10 @@ def _parse_email_message(msg: email.message.Message) -> Email:
     except Exception:
         received_at = datetime.now(timezone.utc)
 
-    message_id = msg.get("Message-ID", f"<generated-{datetime.now(timezone.utc).timestamp()}>")
+    message_id = msg.get("Message-ID", "")
+    if not message_id:
+        stable = f"{sender_email}|{raw_date}|{msg.get('Subject', '')}"
+        message_id = f"<generated-{hashlib.sha256(stable.encode()).hexdigest()}>"
     email_id = _message_id_hash(message_id)
 
     raw_labels = msg.get("X-Gmail-Labels", "")
@@ -78,7 +81,7 @@ def _parse_email_message(msg: email.message.Message) -> Email:
 
 def _insert_email(em: Email, conn: sqlite3.Connection) -> bool:
     """Insert email into database, skip silently if already exists. Returns True if inserted."""
-    conn.execute(
+    cursor = conn.execute(
         "INSERT OR IGNORE INTO emails (id, thread_id, subject, sender_email, sender_name, "
         "received_at, body_text, labels, is_read) VALUES (?,?,?,?,?,?,?,?,?)",
         (
@@ -87,7 +90,7 @@ def _insert_email(em: Email, conn: sqlite3.Connection) -> bool:
         ),
     )
     conn.commit()
-    return conn.total_changes > 0
+    return cursor.rowcount > 0
 
 
 class IMAPClient:
@@ -102,9 +105,9 @@ class IMAPClient:
     def fetch_emails(self, scope: str, conn: sqlite3.Connection) -> int:
         """Fetch emails and store in DB. Returns count of new emails inserted."""
         mail = imaplib.IMAP4_SSL(self.host)
-        mail.login(self.user, self.password)
-        mail.select("INBOX")
         try:
+            mail.login(self.user, self.password)
+            mail.select("INBOX")
             criteria = self._build_criteria(scope, conn)
             _, data = mail.search(None, criteria)
             if not data or not data[0]:
