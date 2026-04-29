@@ -1,6 +1,7 @@
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 
@@ -28,7 +29,7 @@ def health():
 
 
 @app.post("/run")
-def run(scope: str = None):
+def run(scope: Optional[str] = None):
     """Fetch emails and store in database.
     
     Args:

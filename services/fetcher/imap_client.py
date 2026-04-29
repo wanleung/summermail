@@ -57,8 +57,11 @@ def _parse_email_message(msg: email.message.Message) -> Email:
     except Exception:
         received_at = datetime.now(timezone.utc)
 
-    message_id = msg.get("Message-ID", f"<generated-{datetime.now().timestamp()}>")
+    message_id = msg.get("Message-ID", f"<generated-{datetime.now(timezone.utc).timestamp()}>")
     email_id = _message_id_hash(message_id)
+
+    raw_labels = msg.get("X-Gmail-Labels", "")
+    labels = [lbl.strip() for lbl in raw_labels.split(",") if lbl.strip()]
 
     return Email(
         id=email_id,
@@ -68,18 +71,15 @@ def _parse_email_message(msg: email.message.Message) -> Email:
         sender_name=sender_name,
         received_at=received_at,
         body_text=_extract_body(msg),
-        labels=json.loads(msg.get("X-Gmail-Labels", "[]")),
+        labels=labels,
         is_read=False,
     )
 
 
 def _insert_email(em: Email, conn: sqlite3.Connection) -> bool:
     """Insert email into database, skip silently if already exists. Returns True if inserted."""
-    existing = conn.execute("SELECT id FROM emails WHERE id=?", (em.id,)).fetchone()
-    if existing:
-        return False
     conn.execute(
-        "INSERT INTO emails (id, thread_id, subject, sender_email, sender_name, "
+        "INSERT OR IGNORE INTO emails (id, thread_id, subject, sender_email, sender_name, "
         "received_at, body_text, labels, is_read) VALUES (?,?,?,?,?,?,?,?,?)",
         (
             em.id, em.thread_id, em.subject, em.sender_email, em.sender_name,
@@ -87,7 +87,7 @@ def _insert_email(em: Email, conn: sqlite3.Connection) -> bool:
         ),
     )
     conn.commit()
-    return True
+    return conn.total_changes > 0
 
 
 class IMAPClient:
@@ -104,25 +104,25 @@ class IMAPClient:
         mail = imaplib.IMAP4_SSL(self.host)
         mail.login(self.user, self.password)
         mail.select("INBOX")
+        try:
+            criteria = self._build_criteria(scope, conn)
+            _, data = mail.search(None, criteria)
+            if not data or not data[0]:
+                return 0
 
-        criteria = self._build_criteria(scope, conn)
-        _, data = mail.search(None, criteria)
-        if not data or not data[0]:
+            ids = data[0].split()
+            inserted = 0
+            for uid in ids:
+                _, msg_data = mail.fetch(uid, "(RFC822)")
+                raw = msg_data[0][1]
+                msg = email.message_from_bytes(raw)
+                em = _parse_email_message(msg)
+                if _insert_email(em, conn):
+                    inserted += 1
+
+            return inserted
+        finally:
             mail.logout()
-            return 0
-
-        ids = data[0].split()
-        inserted = 0
-        for uid in ids:
-            _, msg_data = mail.fetch(uid, "(RFC822)")
-            raw = msg_data[0][1]
-            msg = email.message_from_bytes(raw)
-            em = _parse_email_message(msg)
-            if _insert_email(em, conn):
-                inserted += 1
-
-        mail.logout()
-        return inserted
 
     def _build_criteria(self, scope: str, conn: sqlite3.Connection) -> str:
         """Build IMAP search criteria based on scope."""
