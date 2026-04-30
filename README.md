@@ -238,6 +238,7 @@ All configuration is via `.env`. Copy `.env.example` as a starting point.
 | `SUMMARY_SEND_TO` | — | Address to receive daily digest |
 | `FETCH_SCOPE` | `24h` | `24h`, `unread`, or `since_last_run` |
 | `SCHEDULE_CRON` | `0 6 * * *` | Cron expression for daily run |
+| `SCHEDULE_TIMEZONE` | `UTC` | IANA timezone for cron (e.g. `Asia/Hong_Kong`) |
 | `SUMMARY_TOP_N` | `20` | Max emails included in digest |
 | `SCORER_LLM_MODEL` | `ollama/llama3.2` | LLM model for scoring |
 | `SUMMARISER_LLM_MODEL` | `ollama/llama3.2` | LLM model for digest |

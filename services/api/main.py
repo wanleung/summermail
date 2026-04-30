@@ -38,6 +38,15 @@ async def lifespan(app: FastAPI):
         raise ValueError(
             f"Invalid schedule_cron '{settings.schedule_cron}': expected 5 parts, got {len(cron_parts)}"
         )
+
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(settings.schedule_timezone)
+    except Exception as e:
+        print(f"Invalid SCHEDULE_TIMEZONE '{settings.schedule_timezone}', falling back to UTC: {e}")
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("UTC")
+
     scheduler.add_job(
         scheduled_run,
         CronTrigger(
@@ -46,9 +55,11 @@ async def lifespan(app: FastAPI):
             day=cron_parts[2],
             month=cron_parts[3],
             day_of_week=cron_parts[4],
+            timezone=tz,
         ),
     )
     scheduler.start()
+    print(f"Scheduler started: cron='{settings.schedule_cron}' tz='{settings.schedule_timezone}'")
     yield
     scheduler.shutdown()
 

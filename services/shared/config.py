@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434"
     summary_top_n: int = 20
     db_path: str = "/data/email_summariser.db"
+    schedule_timezone: str = "UTC"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
