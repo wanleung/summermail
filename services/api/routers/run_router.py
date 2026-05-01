@@ -24,7 +24,7 @@ def trigger_run(scope: str = None):
         raise HTTPException(status_code=502, detail=f"fetcher failed: {e}")
 
     try:
-        r = httpx.post(f"{SCORER_URL}/run", timeout=300)
+        r = httpx.post(f"{SCORER_URL}/run", timeout=900)
         r.raise_for_status()
         results["scorer"] = r.json()
     except Exception as e:

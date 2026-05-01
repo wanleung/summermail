@@ -94,6 +94,7 @@ def score_llm(subject: str, body: str, model: str = None) -> tuple[int, str]:
             {"role": "user", "content": user_content},
         ],
         temperature=0.1,
+        timeout=60,
     )
 
     return _parse_llm_response(response.choices[0].message.content)
