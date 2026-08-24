@@ -81,7 +81,7 @@ def health():
 
 @app.get("/search")
 def search_proxy(q: str):
-    """Search emails (convenience endpoint)."""
+    """Search emails (convenience alias for /emails/search)."""
     from api.routers.emails import search_emails
 
     return search_emails(q=q)

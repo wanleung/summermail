@@ -93,6 +93,19 @@ def _insert_email(em: Email, conn: sqlite3.Connection) -> bool:
     return cursor.rowcount > 0
 
 
+def _last_successful_run(conn: sqlite3.Connection) -> Optional[datetime]:
+    """Return the completion time of the last successful fetch, as UTC."""
+    row = conn.execute(
+        "SELECT completed_at FROM fetch_runs WHERE status='success' "
+        "ORDER BY completed_at DESC LIMIT 1"
+    ).fetchone()
+    if not row or not row["completed_at"]:
+        return None
+    parsed = datetime.fromisoformat(row["completed_at"])
+    # SQLite datetime('now') is UTC but naive
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
 class IMAPClient:
     """IMAP client for fetching emails from Gmail."""
 
@@ -108,8 +121,8 @@ class IMAPClient:
         try:
             mail.login(self.user, self.password)
             mail.select("INBOX")
-            criteria = self._build_criteria(scope, conn)
-            _, data = mail.search(None, criteria)
+            cutoff = self._window_start(scope, conn)
+            _, data = mail.search(None, self._build_criteria(scope, cutoff))
             if not data or not data[0]:
                 return 0
 
@@ -124,6 +137,10 @@ class IMAPClient:
                 raw = msg_data[0][1]
                 msg = email.message_from_bytes(raw)
                 em = _parse_email_message(msg, is_read=is_read)
+                # IMAP SINCE has date-only granularity, so it over-returns by up
+                # to a day; trim to the window actually asked for.
+                if cutoff and em.received_at < cutoff:
+                    continue
                 if _insert_email(em, conn):
                     inserted += 1
 
@@ -131,19 +148,18 @@ class IMAPClient:
         finally:
             mail.logout()
 
-    def _build_criteria(self, scope: str, conn: sqlite3.Connection) -> str:
-        """Build IMAP search criteria based on scope."""
+    def _window_start(self, scope: str, conn: sqlite3.Connection) -> Optional[datetime]:
+        """Return the earliest received_at to accept, or None for no time bound."""
         if scope == "unread":
+            return None
+        if scope == "since_last_run":
+            last = _last_successful_run(conn)
+            if last:
+                return last
+        return datetime.now(timezone.utc) - timedelta(hours=24)
+
+    def _build_criteria(self, scope: str, cutoff: Optional[datetime]) -> str:
+        """Build IMAP search criteria for the given scope and window start."""
+        if scope == "unread" or cutoff is None:
             return "UNSEEN"
-        elif scope == "since_last_run":
-            row = conn.execute(
-                "SELECT completed_at FROM fetch_runs WHERE status='success' "
-                "ORDER BY completed_at DESC LIMIT 1"
-            ).fetchone()
-            if row and row["completed_at"]:
-                since_dt = datetime.fromisoformat(row["completed_at"])
-                since_str = since_dt.strftime("%d-%b-%Y")
-                return f'SINCE "{since_str}"'
-        # default: 24h
-        since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%d-%b-%Y")
-        return f'SINCE "{since}"'
+        return f'SINCE "{cutoff.strftime("%d-%b-%Y")}"'

@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 
 from shared.database import get_db, init_db
-from summariser.prompt import build_prompt, SYSTEM_PROMPT
+from summariser.prompt import build_prompt, build_system_prompt
 from summariser.mailer import send_summary_email
 
 
@@ -25,7 +25,10 @@ def _get_client() -> OpenAI:
     global _client
     if _client is None:
         from shared.config import settings
-        _client = OpenAI(base_url=settings.llm_base_url, api_key="ignored")
+        _client = OpenAI(
+            base_url=settings.llm_base_url,
+            api_key=settings.litellm_master_key.get_secret_value(),
+        )
     return _client
 
 
@@ -75,9 +78,10 @@ def run():
     try:
         today = date.today().isoformat()
 
-        # Check if already summarized today
+        # Skip only if today's digest was actually delivered. A row with a NULL
+        # sent_at means a previous attempt failed to send, and must be retryable.
         existing = conn.execute(
-            "SELECT id FROM summaries WHERE date=?", (today,)
+            "SELECT id FROM summaries WHERE date=? AND sent_at IS NOT NULL", (today,)
         ).fetchone()
         if existing:
             return {"status": "skipped", "reason": "already summarised today"}
@@ -108,10 +112,11 @@ def run():
         response = client.chat.completions.create(
             model=settings.summariser_llm_model,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt()},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
+            timeout=settings.summariser_llm_timeout,
         )
         
         # Guard against empty LLM response
@@ -124,7 +129,7 @@ def run():
         # Store summary in database (no commit yet)
         top_ids = [r["id"] for r in rows[:10]]
         conn.execute(
-            "INSERT INTO summaries (date, summary_text, email_count, top_email_ids) "
+            "INSERT OR REPLACE INTO summaries (date, summary_text, email_count, top_email_ids) "
             "VALUES (?,?,?,?)",
             (today, summary_text, email_count, json.dumps(top_ids)),
         )

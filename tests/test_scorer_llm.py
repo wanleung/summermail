@@ -46,3 +46,27 @@ def test_score_llm_propagates_connection_error():
             assert False, "Expected exception to be raised"
         except Exception as e:
             assert "Connection refused" in str(e)
+
+
+def test_parse_llm_response_handles_fenced_json():
+    """Markdown code fences around the JSON must not defeat parsing."""
+    text = '```json\n{"score": 85, "reason": "Payment overdue"}\n```'
+    score, reason = _parse_llm_response(text)
+    assert score == 85
+    assert reason == "Payment overdue"
+
+
+def test_parse_llm_response_strips_thinking_block():
+    """A reasoning model's <think> block must not leak into the score."""
+    text = '<think>Maybe 12 out of 100? No.</think>{"score": 90, "reason": "Outage"}'
+    score, reason = _parse_llm_response(text)
+    assert score == 90
+    assert reason == "Outage"
+
+
+def test_parse_llm_response_extracts_json_after_prose():
+    """A number in leading prose must not be mistaken for the score."""
+    text = 'Here is my rating out of 100:\n{"score": 30, "reason": "Newsletter"}'
+    score, reason = _parse_llm_response(text)
+    assert score == 30
+    assert reason == "Newsletter"

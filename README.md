@@ -142,7 +142,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 ### Pull the model
 
 ```bash
-ollama pull llama3.2
+ollama pull qwen3.8
 ```
 
 ### Allow network access (if Ollama is on a separate host)
@@ -179,7 +179,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 curl http://<ollama-host>:11434/api/tags
 ```
 
-You should see a JSON list of your installed models. If `llama3.2` appears, you're ready to go.
+You should see a JSON list of your installed models. If `qwen3.8` appears, you're ready to go.
 
 ---
 
@@ -188,7 +188,7 @@ You should see a JSON list of your installed models. If `llama3.2` appears, you'
 ### Prerequisites
 
 - Docker + Docker Compose
-- Ollama running with `llama3.2` pulled (see [Ollama Setup](#ollama-setup) above)
+- Ollama running with `qwen3.8` pulled (see [Ollama Setup](#ollama-setup) above)
 - Gmail [App Password](https://support.google.com/accounts/answer/185833) (not your main password)
 
 ### 1. Configure
@@ -240,8 +240,12 @@ All configuration is via `.env`. Copy `.env.example` as a starting point.
 | `SCHEDULE_CRON` | `0 6 * * *` | Cron expression for daily run |
 | `SCHEDULE_TIMEZONE` | `UTC` | IANA timezone for cron (e.g. `Asia/Hong_Kong`) |
 | `SUMMARY_TOP_N` | `20` | Max emails included in digest |
-| `SCORER_LLM_MODEL` | `ollama/llama3.2` | LLM model for scoring |
-| `SUMMARISER_LLM_MODEL` | `ollama/llama3.2` | LLM model for digest |
+| `SCORER_LLM_MODEL` | `ollama/qwen3.8` | LLM model for scoring |
+| `SUMMARISER_LLM_MODEL` | `ollama/qwen3.8` | LLM model for digest |
+| `LITELLM_MASTER_KEY` | `ignored` | Shared secret for the LiteLLM proxy |
+| `SCORER_LLM_TIMEOUT` | `120` | Seconds per scoring call (one call per email) |
+| `SUMMARISER_LLM_TIMEOUT` | `600` | Seconds for the digest generation call |
+| `SCORER_RUN_TIMEOUT` | `3600` | Seconds for the whole scoring pass |
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama base URL |
 | `SMTP_HOST` | `smtp.gmail.com` | SMTP server |
 | `SMTP_PORT` | `587` | SMTP port |
@@ -258,6 +262,8 @@ OPENAI_API_KEY=sk-...
 
 docker compose restart scorer summariser
 ```
+
+Any model you name here must also be registered in `litellm/config.yaml`, then `docker compose restart llm-proxy`.
 
 Supported providers: Ollama, OpenAI, Anthropic, Groq, and [anything LiteLLM supports](https://docs.litellm.ai/docs/providers).
 

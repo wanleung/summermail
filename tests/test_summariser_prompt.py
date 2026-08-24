@@ -1,5 +1,5 @@
 """Tests for the summariser prompt building."""
-from summariser.prompt import build_prompt, SYSTEM_PROMPT
+from summariser.prompt import build_prompt, build_system_prompt
 
 
 def _make_email_rows():
@@ -52,8 +52,9 @@ def test_build_prompt_truncates_body():
 
 
 def test_system_prompt_requests_json_structure():
-    assert "Action Required" in SYSTEM_PROMPT
-    assert "Worth Reading" in SYSTEM_PROMPT
+    prompt = build_system_prompt()
+    assert "Action Required" in prompt
+    assert "Worth Reading" in prompt
 
 
 def test_build_prompt_empty_list():
@@ -69,3 +70,12 @@ def test_build_prompt_none_body():
     }]
     prompt = build_prompt(rows)
     assert "Body:" in prompt
+
+
+def test_system_prompt_uses_configured_dashboard_url(monkeypatch):
+    """The digest footer link must follow the configured dashboard URL, not a hardcoded port."""
+    from shared.config import settings
+    from summariser.prompt import build_system_prompt
+
+    monkeypatch.setattr(settings, "dashboard_url", "http://localhost:18001")
+    assert "http://localhost:18001" in build_system_prompt()

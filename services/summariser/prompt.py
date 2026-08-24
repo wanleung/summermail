@@ -2,7 +2,7 @@
 from typing import Any
 
 
-SYSTEM_PROMPT = """You are an email digest assistant. Given a list of emails with importance scores (0-100), produce a concise daily digest grouped into three sections:
+_SYSTEM_PROMPT_TEMPLATE = """You are an email digest assistant. Given a list of emails with importance scores (0-100), produce a concise daily digest grouped into three sections:
 
 ## 🔴 Action Required
 Emails scoring 70+ that need a response or decision today.
@@ -14,7 +14,14 @@ Emails scoring 30-69 that are informational or may need follow-up.
 Emails scoring below 30.
 
 For each email write: **[Subject]** from Sender — one-sentence summary.
-End with a horizontal rule and the line: Dashboard: http://localhost:8080"""
+End with a horizontal rule and the line: Dashboard: {dashboard_url}"""
+
+
+def build_system_prompt() -> str:
+    """Return the digest system prompt with the configured dashboard link."""
+    from shared.config import settings
+
+    return _SYSTEM_PROMPT_TEMPLATE.format(dashboard_url=settings.dashboard_url)
 
 
 def build_prompt(email_rows: list[dict[str, Any]]) -> str:

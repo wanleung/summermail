@@ -77,6 +77,7 @@ def run():
         ).fetchall()
 
         scored = 0
+        failed = 0
         for row in unscored:
             email_id = row["id"]
             subject = row["subject"] or ""
@@ -89,26 +90,31 @@ def run():
             # Layer 2: Keyword scoring
             kw_score = score_keywords(subject, body, conn)
 
-            # Layer 3: LLM scoring (with fallback on error)
+            # Layer 3: LLM scoring. On failure, leave the email unscored rather
+            # than persisting a 0 — an unscored row is retried on the next run,
+            # a persisted one never is.
             try:
                 llm_score, reasoning = score_llm(subject, body)
             except Exception as e:
-                llm_score, reasoning = 0, f"LLM error: {e}"
+                print(f"LLM scoring failed for {email_id}, will retry next run: {e}")
+                failed += 1
+                continue
 
             # Combine layers using formula
             total = compute_total_score(vip, kw_score, llm_score)
 
-            # Store results
+            # Store results, committing per email so a run that is cut short
+            # (client timeout, restart) keeps the work it already did
             conn.execute(
                 "INSERT OR REPLACE INTO email_scores "
                 "(email_id, vip_match, keyword_score, llm_score, total_score, llm_reasoning) "
                 "VALUES (?,?,?,?,?,?)",
                 (email_id, vip, kw_score, llm_score, total, reasoning),
             )
+            conn.commit()
             scored += 1
 
-        conn.commit()
-        return {"status": "success", "emails_scored": scored}
+        return {"status": "success", "emails_scored": scored, "emails_failed": failed}
 
     except Exception as exc:
         conn.rollback()
