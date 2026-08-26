@@ -44,11 +44,11 @@ def test_config_add_vip(client):
     """Test adding a VIP sender."""
     response = client.post(
         "/config/vip",
-        json={"pattern": "*@important.com", "label": "Important Corp"}
+        json={"pattern": "@important.com", "label": "Important Corp"}
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["pattern"] == "*@important.com"
+    assert data["pattern"] == "@important.com"
     assert data["label"] == "Important Corp"
     assert "id" in data
 
@@ -145,3 +145,36 @@ def test_delete_nonexistent_vip_returns_404(client):
     """Test that deleting non-existent VIP returns 404."""
     r = client.delete("/config/vip/99999")
     assert r.status_code == 404
+
+
+def test_config_page_advertises_vip_patterns_that_actually_match(client):
+    """Every pattern form the VIP form suggests must be one check_vip honours.
+
+    A glob-looking hint such as '*@domain.com' is stored happily but never
+    matches any sender, leaving a silently dead VIP rule.
+    """
+    import re
+    import sqlite3
+
+    from scorer.vip import check_vip
+
+    html = client.get("/config").text
+    placeholder = re.search(
+        r'name="pattern"[^>]*placeholder="([^"]*)"', html
+    ).group(1)
+    advertised = re.findall(r"\S*@\S+", placeholder)
+    assert advertised, f"VIP form suggests no pattern at all: {placeholder!r}"
+
+    for pattern in advertised:
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE vip_senders (pattern TEXT)")
+        conn.execute("INSERT INTO vip_senders (pattern) VALUES (?)", (pattern,))
+
+        # a domain form matches anyone there; an exact form matches only itself
+        stripped = pattern.lstrip("*")
+        sender = "someone" + stripped if stripped.startswith("@") else pattern
+
+        assert check_vip(sender, conn), (
+            f"placeholder advertises {pattern!r}, which does not match {sender!r}"
+        )

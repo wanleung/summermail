@@ -34,9 +34,9 @@ def index(request: Request):
         keywords = conn.execute("SELECT * FROM keywords ORDER BY id").fetchall()
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "emails": [dict(e) for e in emails],
             "summary": dict(today_summary) if today_summary else None,
             "last_run": dict(last_run) if last_run else None,
@@ -63,7 +63,7 @@ def email_detail_view(request: Request, email_id: str):
         if not row:
             raise HTTPException(status_code=404, detail="Email not found")
     return templates.TemplateResponse(
-        "email_detail.html", {"request": request, "email": dict(row)}
+        request, "email_detail.html", {"email": dict(row)}
     )
 
 
@@ -74,9 +74,9 @@ def config_page(request: Request):
         vip_senders = conn.execute("SELECT * FROM vip_senders ORDER BY id").fetchall()
         keywords = conn.execute("SELECT * FROM keywords ORDER BY id").fetchall()
     return templates.TemplateResponse(
+        request,
         "config.html",
         {
-            "request": request,
             "vip_senders": [dict(v) for v in vip_senders],
             "keywords": [dict(k) for k in keywords],
         },
